@@ -12,54 +12,50 @@ type Command struct {
 }
 
 func (cmd *Command) Display() []byte {
-	message := ""
-	if cmd.name == Quit {
-		message = "221 Bye\n"
-	} else if cmd.name == Hello {
-		message = fmt.Sprintf("250 Pleased to meet you %s\n", cmd.args)
-	} else if cmd.name == Welcome {
-		message = "220 localhost\n"
-	} else if cmd.name == Date {
+	switch cmd.name {
+	case Quit:
+		return []byte("221 Bye\n")
+	case Hello:
+		return []byte(fmt.Sprintf("250 Pleased to meet you %s\n", cmd.args))
+	case Welcome:
+		return []byte("220 localhost\n")
+	case Date:
 		dt := time.Now()
-		message = dt.Format(DateFormat)
+		return []byte(dt.Format(DateFormat))
 	}
-	return []byte(message)
+	return []byte("")
 }
 
 func (cmd *Command) Error() []byte {
-	message := ""
-	if cmd.name == Hello {
-		message = fmt.Sprintf("%s Verb need a name\n", cmd.name)
-	} else if cmd.name == Date {
-		message = "550 Bad state\n"
-	} else {
-		message = fmt.Sprintf("%s Verb is not recognized\n", cmd.name)
+	switch cmd.name {
+	case Hello:
+		return []byte(fmt.Sprintf("%s Verb need a name\n", cmd.name))
+	case Date:
+		return []byte("550 Bad state\n")
+	default:
+		return []byte(fmt.Sprintf("%s Verb is not recognized\n", cmd.name))
 	}
-	return []byte(message)
 }
 
 func (cmd *Command) isValid(client *Client) bool {
-	verb := ""
-	if cmd.name == Welcome {
+	switch cmd.name {
+	case "":
+		return false
+	case Quit, Welcome:
 		return true
-	}
-	for i := range availableVerbs {
-		if availableVerbs[i] == cmd.name {
-			verb = cmd.name
+	case Hello:
+		if cmd.args == "" {
+			return false
 		}
-	}
-	if verb == Hello && cmd.args == "" {
-		return false
-	}
-	if verb == "" {
-		return false
-	}
-	if verb == Date {
+		return true
+	case Date:
 		if _, ok := client.commands[Hello]; !ok {
 			return false
 		}
+		return true
+	default:
+		return false
 	}
-	return true
 }
 
 func parse(cmd string) (string, string) {

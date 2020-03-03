@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"sync"
 )
 
 type TcpServer struct {
 	listener net.Listener
 	clients  []*Client
+	mutex    *sync.Mutex
 }
 
 func (server *TcpServer) Start() error {
