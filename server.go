@@ -11,7 +11,7 @@ import (
 type TcpServer struct {
 	listener net.Listener
 	clients  []*Client
-	mutex    *sync.Mutex
+	mutex    sync.Mutex
 }
 
 func (server *TcpServer) Start() error {
@@ -38,6 +38,8 @@ func (server *TcpServer) Listen(port int) error {
 }
 
 func (server *TcpServer) addClient(conn net.Conn) *Client {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
 	c := &Client{
 		conn:     conn,
 		commands: make(map[string]int),
@@ -47,6 +49,8 @@ func (server *TcpServer) addClient(conn net.Conn) *Client {
 }
 
 func (server *TcpServer) disconnect(client *Client) {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
 	for i, check := range server.clients {
 		if check == client {
 			server.clients = append(server.clients[:i], server.clients[i+1:]...)
