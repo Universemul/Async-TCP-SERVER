@@ -2,75 +2,144 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"time"
 )
 
-const Port = 8001
-const Quit = "QUIT"
-const Hello = "EHLO"
-const Date = "DATE"
-const Welcome = "WELCOME"
-const DateFormat = "02-01-2006T15:04:05\n"
+const (
+	Port       = 8001
+	Quit       = "QUIT"
+	Hello      = "EHLO"
+	Date       = "DATE"
+	Welcome    = "WELCOME"
+	DateFormat = "02-01-2006T15:04:05\n"
+)
 
 var availableVerbs = [4]string{Quit, Hello, Date}
 
-type Command struct {
-	name string
-	args string
+type Command interface {
+	Display() []byte
+	Error() []byte
+	IsValid(*Client) bool
+	Name() string
 }
 
-func (cmd *Command) Display() []byte {
-	switch cmd.name {
-	case Quit:
-		return []byte("221 Bye\n")
-	case Hello:
-		return []byte(fmt.Sprintf("250 Pleased to meet you %s\n", cmd.args))
-	case Welcome:
-		return []byte("220 localhost\n")
-	case Date:
-		dt := time.Now()
-		return []byte(dt.Format(DateFormat))
-	}
+type QuitCommand struct {
+	name, args string
+}
+
+type WelcomeCommand struct {
+	name, args string
+}
+
+type HelloCommand struct {
+	name, args string
+}
+
+type DateCommand struct {
+	name, args string
+}
+
+type UnknownCommand struct {
+	name, args string
+}
+
+func (cmd QuitCommand) Display() []byte {
+	return []byte("221 Bye\n")
+}
+
+func (cmd WelcomeCommand) Display() []byte {
+	return []byte("220 localhost\n")
+}
+
+func (cmd DateCommand) Display() []byte {
+	dt := time.Now()
+	return []byte(dt.Format(DateFormat))
+}
+
+func (cmd HelloCommand) Display() []byte {
+	return []byte(fmt.Sprintf("250 Pleased to meet you %s\n", cmd.args))
+}
+
+func (cmd UnknownCommand) Display() []byte {
 	return []byte("")
+
 }
 
-func (cmd *Command) Error() []byte {
-	switch cmd.name {
-	case Hello:
-		return []byte(fmt.Sprintf("%s Verb need a name\n", cmd.name))
-	case Date:
-		return []byte("550 Bad state\n")
-	default:
-		return []byte(fmt.Sprintf("%s Verb is not recognized\n", cmd.name))
-	}
+func (cmd QuitCommand) Error() []byte {
+	return []byte("\n")
 }
 
-func (cmd *Command) isValid(client *Client) bool {
-	switch cmd.name {
-	case "":
+func (cmd WelcomeCommand) Error() []byte {
+	return []byte("220 localhost\n")
+}
+
+func (cmd DateCommand) Error() []byte {
+	return []byte("550 Bad state\n")
+}
+
+func (cmd HelloCommand) Error() []byte {
+	return []byte(fmt.Sprintf("%s Verb need a name\n", cmd.name))
+}
+
+func (cmd UnknownCommand) Error() []byte {
+	return []byte(fmt.Sprintf("%s Verb is not recognized\n", cmd.name))
+
+}
+
+func (cmd QuitCommand) IsValid(c *Client) bool {
+	return true
+}
+
+func (cmd HelloCommand) IsValid(c *Client) bool {
+	return cmd.args != ""
+}
+
+func (cmd DateCommand) IsValid(c *Client) bool {
+	if _, ok := c.commands[Hello]; !ok {
 		return false
-	case Quit, Welcome:
-		return true
-	case Hello:
-		if cmd.args == "" {
-			return false
-		}
-		return true
-	case Date:
-		if _, ok := client.commands[Hello]; !ok {
-			return false
-		}
-		return true
-	default:
-		return false
 	}
+	return true
 }
 
-func parse(cmd string) (string, string) {
-	tmp := strings.Split(strings.TrimSpace(cmd), " ")
-	if len(tmp) > 1 {
-		return tmp[0], tmp[1]
+func (cmd UnknownCommand) IsValid(c *Client) bool {
+	return false
+}
+
+func (cmd WelcomeCommand) IsValid(c *Client) bool {
+	return true
+}
+
+func (cmd QuitCommand) Name() string {
+	return cmd.name
+}
+
+func (cmd HelloCommand) Name() string {
+	return cmd.name
+}
+
+func (cmd DateCommand) Name() string {
+	return cmd.name
+}
+
+func (cmd UnknownCommand) Name() string {
+	return cmd.name
+}
+
+func (cmd WelcomeCommand) Name() string {
+	return cmd.name
+}
+
+func CommandFactoy(verb string, args string) Command {
+	switch verb {
+	case Quit:
+		return QuitCommand{name: verb, args: args}
+	case Welcome:
+		return WelcomeCommand{name: verb, args: args}
+	case Date:
+		return DateCommand{name: verb, args: args}
+	case Hello:
+		return HelloCommand{name: verb, args: args}
+	default:
+		return UnknownCommand{name: verb, args: args}
 	}
-	return tmp[0], ""
 }

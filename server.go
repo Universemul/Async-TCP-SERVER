@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 )
 
@@ -31,10 +32,11 @@ func (server *TcpServer) Close() {
 func (server *TcpServer) Listen(port int) error {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	listener, err := net.Listen("tcp", addr)
-	if err == nil {
-		server.listener = listener
+	if err != nil {
+		return err
 	}
-	return err
+	server.listener = listener
+	return nil
 }
 
 func (server *TcpServer) addClient(conn net.Conn) *Client {
@@ -62,18 +64,18 @@ func (server *TcpServer) disconnect(client *Client) {
 func (server *TcpServer) performCommand(conn net.Conn) {
 	client := server.addClient(conn)
 	defer server.disconnect(client)
-	client.Write(Command{name: Welcome})
+	client.Write(CommandFactoy(Welcome, ""))
 	for {
 		cmd, err := client.Read()
 		if err != nil {
-			if cmd.name == "" {
+			if cmd.Name() == "" {
 				break // Client has disconnected
 			} else {
 				fmt.Printf("%s", cmd.Error())
 				client.Write(cmd)
 			}
 		} else {
-			if cmd.name == Quit {
+			if cmd.Name() == Quit {
 				err := client.Write(cmd)
 				if err != nil {
 					fmt.Printf("%s", err)
@@ -91,10 +93,20 @@ func (server *TcpServer) performCommand(conn net.Conn) {
 type Client struct {
 	conn     net.Conn
 	commands map[string]int
+	//writer   bufio.NewWriter
+	//reader   bufio.NewReader
 }
 
 func (client *Client) Close() {
 	client.conn.Close()
+}
+
+func (client *Client) Parse(cmd string) (string, string) {
+	tmp := strings.Split(strings.TrimSpace(cmd), " ")
+	if len(tmp) > 1 {
+		return tmp[0], tmp[1]
+	}
+	return tmp[0], ""
 }
 
 func (client *Client) Read() (Command, error) {
@@ -103,24 +115,24 @@ func (client *Client) Read() (Command, error) {
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if err != nil {
-			return Command{}, err
+			return nil, err
 		}
 		buffer.Write(line)
 		if !isPrefix {
 			break
 		}
 	}
-	verb, attrs := parse(buffer.String())
-	return Command{name: verb, args: attrs}, nil
+	verb, args := client.Parse(buffer.String())
+	return CommandFactoy(verb, args), nil
 }
 
 func (client *Client) Write(cmd Command) error {
 	writer := bufio.NewWriter(client.conn)
 	f := cmd.Display
-	if !cmd.isValid(client) {
+	if !cmd.IsValid(client) {
 		f = cmd.Error
 	} else {
-		client.commands[cmd.name] += 1
+		client.commands[cmd.Name()] += 1
 	}
 	_, err := writer.Write(f())
 	if err == nil {
