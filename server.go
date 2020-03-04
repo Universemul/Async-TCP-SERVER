@@ -45,6 +45,8 @@ func (server *TcpServer) addClient(conn net.Conn) *Client {
 	c := &Client{
 		conn:     conn,
 		commands: make(map[string]int),
+		writer:   bufio.NewWriter(conn),
+		reader:   bufio.NewReader(conn),
 	}
 	server.clients = append(server.clients, c)
 	return c
@@ -93,8 +95,8 @@ func (server *TcpServer) performCommand(conn net.Conn) {
 type Client struct {
 	conn     net.Conn
 	commands map[string]int
-	//writer   bufio.NewWriter
-	//reader   bufio.NewReader
+	writer   *bufio.Writer
+	reader   *bufio.Reader
 }
 
 func (client *Client) Close() {
@@ -110,10 +112,9 @@ func (client *Client) Parse(cmd string) (string, string) {
 }
 
 func (client *Client) Read() (Command, error) {
-	reader := bufio.NewReader(client.conn)
 	var buffer bytes.Buffer
 	for {
-		line, isPrefix, err := reader.ReadLine()
+		line, isPrefix, err := client.reader.ReadLine()
 		if err != nil {
 			return nil, err
 		}
@@ -127,16 +128,15 @@ func (client *Client) Read() (Command, error) {
 }
 
 func (client *Client) Write(cmd Command) error {
-	writer := bufio.NewWriter(client.conn)
 	f := cmd.Display
 	if !cmd.IsValid(client) {
 		f = cmd.Error
 	} else {
 		client.commands[cmd.Name()] += 1
 	}
-	_, err := writer.Write(f())
+	_, err := client.writer.Write(f())
 	if err == nil {
-		writer.Flush()
+		client.writer.Flush()
 	}
 	return err
 }
