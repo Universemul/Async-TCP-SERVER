@@ -100,7 +100,11 @@ type Client struct {
 }
 
 func (client *Client) Close() {
+	client.writer = nil
+	client.reader = nil
 	client.conn.Close()
+	client.conn = nil
+
 }
 
 func (client *Client) Parse(cmd string) (string, string) {
