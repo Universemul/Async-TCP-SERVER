@@ -23,24 +23,28 @@ type Command interface {
 	Name() string
 }
 
-type QuitCommand struct {
+type BaseCommand struct {
 	name, args string
+}
+
+type QuitCommand struct {
+	BaseCommand
 }
 
 type WelcomeCommand struct {
-	name, args string
+	BaseCommand
 }
 
 type HelloCommand struct {
-	name, args string
+	BaseCommand
 }
 
 type DateCommand struct {
-	name, args string
+	BaseCommand
 }
 
 type UnknownCommand struct {
-	name, args string
+	BaseCommand
 }
 
 func (cmd QuitCommand) Display() []byte {
@@ -109,37 +113,21 @@ func (cmd WelcomeCommand) IsValid(c *Client) bool {
 	return true
 }
 
-func (cmd QuitCommand) Name() string {
-	return cmd.name
-}
-
-func (cmd HelloCommand) Name() string {
-	return cmd.name
-}
-
-func (cmd DateCommand) Name() string {
-	return cmd.name
-}
-
-func (cmd UnknownCommand) Name() string {
-	return cmd.name
-}
-
-func (cmd WelcomeCommand) Name() string {
+func (cmd BaseCommand) Name() string {
 	return cmd.name
 }
 
 func CommandFactoy(verb string, args string) Command {
 	switch verb {
 	case Quit:
-		return QuitCommand{name: verb, args: args}
+		return QuitCommand{BaseCommand: BaseCommand{name: verb, args: args}}
 	case Welcome:
-		return WelcomeCommand{name: verb, args: args}
+		return WelcomeCommand{BaseCommand: BaseCommand{name: verb, args: args}}
 	case Date:
-		return DateCommand{name: verb, args: args}
+		return DateCommand{BaseCommand: BaseCommand{name: verb, args: args}}
 	case Hello:
-		return HelloCommand{name: verb, args: args}
+		return HelloCommand{BaseCommand: BaseCommand{name: verb, args: args}}
 	default:
-		return UnknownCommand{name: verb, args: args}
+		return UnknownCommand{BaseCommand: BaseCommand{name: verb, args: args}}
 	}
 }
