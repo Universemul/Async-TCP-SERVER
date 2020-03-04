@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -70,8 +71,8 @@ func (server *TcpServer) performCommand(conn net.Conn) {
 	for {
 		cmd, err := client.Read()
 		if err != nil {
-			if cmd.Name() == "" {
-				break // Client has disconnected
+			if cmd == nil || cmd.Name() == "" { // Client has disconnected
+				break
 			} else {
 				fmt.Printf("%s", cmd.Error())
 				client.Write(cmd)
@@ -108,11 +109,13 @@ func (client *Client) Close() {
 }
 
 func (client *Client) Parse(cmd string) (string, string) {
-	tmp := strings.Split(strings.TrimSpace(cmd), " ")
+	pattern := regexp.MustCompile(`\s+`)
+	cmd = strings.TrimSpace(cmd)
+	tmp := strings.Split(pattern.ReplaceAllString(cmd, " "), " ")
 	if len(tmp) > 1 {
-		return tmp[0], tmp[1]
+		return strings.TrimSpace(tmp[0]), strings.TrimSpace(tmp[1])
 	}
-	return tmp[0], ""
+	return strings.TrimSpace(tmp[0]), ""
 }
 
 func (client *Client) Read() (Command, error) {

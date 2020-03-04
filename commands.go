@@ -74,7 +74,7 @@ func (cmd QuitCommand) Error() []byte {
 }
 
 func (cmd WelcomeCommand) Error() []byte {
-	return []byte("220 localhost\n")
+	return []byte("\n")
 }
 
 func (cmd DateCommand) Error() []byte {
