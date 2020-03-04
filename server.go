@@ -10,12 +10,22 @@ import (
 	"sync"
 )
 
+type Server interface {
+	Start() error
+	Close()
+	Listen() error
+}
+
+// Define the current Server
+// clients define all the current Connection
+// mutex is used to lock/unlock the server when adding/deleting a Client
 type TcpServer struct {
 	listener net.Listener
 	clients  []*Client
 	mutex    sync.Mutex
 }
 
+// Start the Server and launch a goroutine when a new connection appears
 func (server *TcpServer) Start() error {
 	for {
 		conn, err := server.listener.Accept()
@@ -53,6 +63,7 @@ func (server *TcpServer) addClient(conn net.Conn) *Client {
 	return c
 }
 
+// Disconnect a client.  We need to remove this client from the 'active clients'
 func (server *TcpServer) disconnect(client *Client) {
 	server.mutex.Lock()
 	defer server.mutex.Unlock()
@@ -64,6 +75,7 @@ func (server *TcpServer) disconnect(client *Client) {
 	client.Close()
 }
 
+// The core method of the server. It allows the server to read and parse the incomming command and to write a custom message to a specific client
 func (server *TcpServer) performCommand(conn net.Conn) {
 	client := server.addClient(conn)
 	defer server.disconnect(client)
@@ -95,7 +107,7 @@ func (server *TcpServer) performCommand(conn net.Conn) {
 
 type Client struct {
 	conn     net.Conn
-	commands map[string]int
+	commands map[string]int // HashMap of commands asked by the client. The value is the number of time requested
 	writer   *bufio.Writer
 	reader   *bufio.Reader
 }
@@ -108,6 +120,7 @@ func (client *Client) Close() {
 
 }
 
+// Parse the current command. Clean the string and separate the verb and the args (e.g The command EHLO [name])
 func (client *Client) Parse(cmd string) (string, string) {
 	pattern := regexp.MustCompile(`\s+`)
 	cmd = strings.TrimSpace(cmd)
@@ -118,6 +131,7 @@ func (client *Client) Parse(cmd string) (string, string) {
 	return strings.TrimSpace(tmp[0]), ""
 }
 
+// Read the command sent by a client
 func (client *Client) Read() (Command, error) {
 	var buffer bytes.Buffer
 	for {
@@ -134,6 +148,7 @@ func (client *Client) Read() (Command, error) {
 	return CommandFactoy(verb, args), nil
 }
 
+// Write something to a client using CommandFactory
 func (client *Client) Write(cmd Command) error {
 	f := cmd.Display
 	if !cmd.IsValid(client) {

@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	Port       = 8001
+	Port       = 8000
 	Quit       = "QUIT"
 	Hello      = "EHLO"
 	Date       = "DATE"
@@ -14,13 +14,11 @@ const (
 	DateFormat = "02-01-2006T15:04:05\n"
 )
 
-var availableVerbs = [4]string{Quit, Hello, Date}
-
 type Command interface {
-	Display() []byte
-	Error() []byte
-	IsValid(*Client) bool
-	Name() string
+	Display() []byte      // Return a message
+	Error() []byte        // Return an error message. Use when IsValid is False
+	IsValid(*Client) bool // Implemente the logic for a specific command (e.g Date must be valid only is EHLO has been sent)
+	Name() string         // The name of the command
 }
 
 type BaseCommand struct {

@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// Main Method can take one argument to define a specific Port. Default is 8000
 func main() {
 	args := os.Args[1:]
 	port := Port
